@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 function App() {
@@ -6,6 +6,8 @@ function App() {
   const [receiptName, setReceiptName] = useState("");
   const [tax, setTax] = useState("");
   const [tip, setTip] = useState("");
+  const [receiptPhoto, setReceiptPhoto] = useState(null);
+  const [receiptPhotoUrl, setReceiptPhotoUrl] = useState("");
   const [people, setPeople] = useState([""]);
   const [items, setItems] = useState([
     {
@@ -14,6 +16,52 @@ function App() {
       assignedTo: "",
     },
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (receiptPhotoUrl) {
+        URL.revokeObjectURL(receiptPhotoUrl);
+      }
+    };
+  }, [receiptPhotoUrl]);
+
+  function handleReceiptPhoto(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    const maximumFileSize = 10 * 1024 * 1024;
+
+    if (file.size > maximumFileSize) {
+      alert("Please choose an image smaller than 10 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    if (receiptPhotoUrl) {
+      URL.revokeObjectURL(receiptPhotoUrl);
+    }
+
+    setReceiptPhoto(file);
+    setReceiptPhotoUrl(URL.createObjectURL(file));
+  }
+
+  function removeReceiptPhoto() {
+    if (receiptPhotoUrl) {
+      URL.revokeObjectURL(receiptPhotoUrl);
+    }
+
+    setReceiptPhoto(null);
+    setReceiptPhotoUrl("");
+  }
 
   function addPerson() {
     setPeople([...people, ""]);
@@ -131,6 +179,7 @@ function App() {
   }
 
   function startOver() {
+    removeReceiptPhoto();
     setStep(1);
     setReceiptName("");
     setTax("");
@@ -171,6 +220,66 @@ function App() {
 
         {step === 1 && (
           <>
+            <section className="card">
+              <h2>Receipt photo</h2>
+
+              {!receiptPhotoUrl && (
+                <>
+                  <label htmlFor="receiptPhoto">
+                    Take or upload a receipt picture
+                  </label>
+
+                  <input
+                    id="receiptPhoto"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleReceiptPhoto}
+                  />
+                </>
+              )}
+
+              {receiptPhotoUrl && (
+                <div className="receiptPhotoSection">
+                  <img
+                    className="receiptPhotoPreview"
+                    src={receiptPhotoUrl}
+                    alt="Receipt preview"
+                  />
+
+                  <p className="receiptPhotoName">
+                    {receiptPhoto?.name}
+                  </p>
+
+                  <div className="receiptPhotoButtons">
+                    <label
+                      className="smallButton receiptPhotoReplace"
+                      htmlFor="replaceReceiptPhoto"
+                    >
+                      Replace photo
+                    </label>
+
+                    <input
+                      id="replaceReceiptPhoto"
+                      className="hiddenFileInput"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleReceiptPhoto}
+                    />
+
+                    <button
+                      type="button"
+                      className="smallButton"
+                      onClick={removeReceiptPhoto}
+                    >
+                      Remove photo
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
             <section className="card">
               <h2>Receipt details</h2>
 
@@ -257,11 +366,7 @@ function App() {
                     placeholder="Item name"
                     value={item.name}
                     onChange={(event) =>
-                      updateItem(
-                        index,
-                        "name",
-                        event.target.value
-                      )
+                      updateItem(index, "name", event.target.value)
                     }
                   />
 
@@ -272,11 +377,7 @@ function App() {
                     placeholder="Price"
                     value={item.price}
                     onChange={(event) =>
-                      updateItem(
-                        index,
-                        "price",
-                        event.target.value
-                      )
+                      updateItem(index, "price", event.target.value)
                     }
                   />
                 </div>
@@ -295,6 +396,18 @@ function App() {
 
         {step === 2 && (
           <>
+            {receiptPhotoUrl && (
+              <section className="card">
+                <h2>Receipt reference</h2>
+
+                <img
+                  className="receiptPhotoPreview"
+                  src={receiptPhotoUrl}
+                  alt="Receipt reference"
+                />
+              </section>
+            )}
+
             <section className="card">
               <h2>Assign items</h2>
 
@@ -318,10 +431,7 @@ function App() {
                     <option value="">Choose a person</option>
 
                     {people.map((person, personIndex) => (
-                      <option
-                        key={personIndex}
-                        value={person}
-                      >
+                      <option key={personIndex} value={person}>
                         {person}
                       </option>
                     ))}
@@ -364,26 +474,17 @@ function App() {
               <h2>Receipt summary</h2>
 
               <div className="breakdownRow">
-                <div>
-                  <strong>Items subtotal</strong>
-                </div>
-
+                <strong>Items subtotal</strong>
                 <span>${getItemSubtotal().toFixed(2)}</span>
               </div>
 
               <div className="breakdownRow">
-                <div>
-                  <strong>Tax</strong>
-                </div>
-
+                <strong>Tax</strong>
                 <span>${Number(tax || 0).toFixed(2)}</span>
               </div>
 
               <div className="breakdownRow">
-                <div>
-                  <strong>Tip</strong>
-                </div>
-
+                <strong>Tip</strong>
                 <span>${Number(tip || 0).toFixed(2)}</span>
               </div>
             </section>
