@@ -33,14 +33,14 @@ function App() {
     }
 
     if (!file.type.startsWith("image/")) {
-      alert("Please choose an image file.");
+      alert("Please choose an image.");
       event.target.value = "";
       return;
     }
 
-    const maximumFileSize = 10 * 1024 * 1024;
+    const maxFileSize = 10 * 1024 * 1024;
 
-    if (file.size > maximumFileSize) {
+    if (file.size > maxFileSize) {
       alert("Please choose an image smaller than 10 MB.");
       event.target.value = "";
       return;
@@ -221,67 +221,56 @@ function App() {
         {step === 1 && (
           <>
             <section className="card">
-              <h2>Receipt photo</h2>
+              <h2>Receipt details</h2>
 
-              {!receiptPhotoUrl && (
-                <>
-                  <label htmlFor="receiptPhoto">
-                    Take or upload a receipt picture
-                  </label>
+              <label htmlFor="receiptPhoto">
+                Receipt photo (optional)
+              </label>
 
-                  <input
-                    id="receiptPhoto"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleReceiptPhoto}
-                  />
-                </>
-              )}
+              <input
+                id="receiptPhoto"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleReceiptPhoto}
+              />
 
               {receiptPhotoUrl && (
-                <div className="receiptPhotoSection">
+                <>
                   <img
-                    className="receiptPhotoPreview"
                     src={receiptPhotoUrl}
                     alt="Receipt preview"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      maxHeight: "350px",
+                      marginBottom: "13px",
+                      objectFit: "contain",
+                      borderRadius: "14px",
+                    }}
                   />
 
-                  <p className="receiptPhotoName">
+                  <p
+                    style={{
+                      margin: "0 0 13px",
+                      color: "#8a8398",
+                      fontSize: "14px",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {receiptPhoto?.name}
                   </p>
 
-                  <div className="receiptPhotoButtons">
-                    <label
-                      className="smallButton receiptPhotoReplace"
-                      htmlFor="replaceReceiptPhoto"
-                    >
-                      Replace photo
-                    </label>
-
-                    <input
-                      id="replaceReceiptPhoto"
-                      className="hiddenFileInput"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleReceiptPhoto}
-                    />
-
-                    <button
-                      type="button"
-                      className="smallButton"
-                      onClick={removeReceiptPhoto}
-                    >
-                      Remove photo
-                    </button>
-                  </div>
-                </div>
+                  <button
+                    type="button"
+                    className="smallButton"
+                    onClick={removeReceiptPhoto}
+                    style={{ marginBottom: "20px" }}
+                  >
+                    Remove photo
+                  </button>
+                </>
               )}
-            </section>
-
-            <section className="card">
-              <h2>Receipt details</h2>
 
               <label htmlFor="receiptName">Receipt name</label>
 
@@ -401,9 +390,15 @@ function App() {
                 <h2>Receipt reference</h2>
 
                 <img
-                  className="receiptPhotoPreview"
                   src={receiptPhotoUrl}
                   alt="Receipt reference"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    maxHeight: "420px",
+                    objectFit: "contain",
+                    borderRadius: "14px",
+                  }}
                 />
               </section>
             )}
@@ -431,7 +426,10 @@ function App() {
                     <option value="">Choose a person</option>
 
                     {people.map((person, personIndex) => (
-                      <option key={personIndex} value={person}>
+                      <option
+                        key={personIndex}
+                        value={person}
+                      >
                         {person}
                       </option>
                     ))}
