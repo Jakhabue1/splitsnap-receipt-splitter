@@ -4,6 +4,8 @@ import "./App.css";
 function App() {
   const [step, setStep] = useState(1);
   const [receiptName, setReceiptName] = useState("");
+  const [tax, setTax] = useState("");
+  const [tip, setTip] = useState("");
   const [people, setPeople] = useState([""]);
   const [items, setItems] = useState([
     {
@@ -72,6 +74,11 @@ function App() {
       return;
     }
 
+    if (Number(tax || 0) < 0 || Number(tip || 0) < 0) {
+      alert("Tax and tip cannot be negative.");
+      return;
+    }
+
     setPeople(validPeople);
     setItems(validItems);
     setStep(2);
@@ -90,22 +97,44 @@ function App() {
     setStep(3);
   }
 
-  function getPersonTotal(person) {
-    return items
-      .filter((item) => item.assignedTo === person)
-      .reduce((total, item) => total + Number(item.price), 0);
-  }
-
-  function getReceiptTotal() {
+  function getItemSubtotal() {
     return items.reduce(
       (total, item) => total + Number(item.price),
       0
     );
   }
 
+  function getExtraCosts() {
+    return Number(tax || 0) + Number(tip || 0);
+  }
+
+  function getEqualExtraShare() {
+    if (people.length === 0) {
+      return 0;
+    }
+
+    return getExtraCosts() / people.length;
+  }
+
+  function getPersonItemTotal(person) {
+    return items
+      .filter((item) => item.assignedTo === person)
+      .reduce((total, item) => total + Number(item.price), 0);
+  }
+
+  function getPersonTotal(person) {
+    return getPersonItemTotal(person) + getEqualExtraShare();
+  }
+
+  function getReceiptTotal() {
+    return getItemSubtotal() + getExtraCosts();
+  }
+
   function startOver() {
     setStep(1);
     setReceiptName("");
+    setTax("");
+    setTip("");
     setPeople([""]);
     setItems([
       {
@@ -145,9 +174,7 @@ function App() {
             <section className="card">
               <h2>Receipt details</h2>
 
-              <label htmlFor="receiptName">
-                Receipt name
-              </label>
+              <label htmlFor="receiptName">Receipt name</label>
 
               <input
                 id="receiptName"
@@ -157,6 +184,30 @@ function App() {
                 onChange={(event) =>
                   setReceiptName(event.target.value)
                 }
+              />
+
+              <label htmlFor="tax">Tax amount</label>
+
+              <input
+                id="tax"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Example: 4.25"
+                value={tax}
+                onChange={(event) => setTax(event.target.value)}
+              />
+
+              <label htmlFor="tip">Tip amount</label>
+
+              <input
+                id="tip"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Example: 8.00"
+                value={tip}
+                onChange={(event) => setTip(event.target.value)}
               />
             </section>
 
@@ -264,9 +315,7 @@ function App() {
                       )
                     }
                   >
-                    <option value="">
-                      Choose a person
-                    </option>
+                    <option value="">Choose a person</option>
 
                     {people.map((person, personIndex) => (
                       <option
@@ -308,9 +357,35 @@ function App() {
                 ${getReceiptTotal().toFixed(2)}
               </h2>
 
-              <p className="receiptTitle">
-                {receiptName}
-              </p>
+              <p className="receiptTitle">{receiptName}</p>
+            </section>
+
+            <section className="card">
+              <h2>Receipt summary</h2>
+
+              <div className="breakdownRow">
+                <div>
+                  <strong>Items subtotal</strong>
+                </div>
+
+                <span>${getItemSubtotal().toFixed(2)}</span>
+              </div>
+
+              <div className="breakdownRow">
+                <div>
+                  <strong>Tax</strong>
+                </div>
+
+                <span>${Number(tax || 0).toFixed(2)}</span>
+              </div>
+
+              <div className="breakdownRow">
+                <div>
+                  <strong>Tip</strong>
+                </div>
+
+                <span>${Number(tip || 0).toFixed(2)}</span>
+              </div>
             </section>
 
             <section className="card">
@@ -324,11 +399,10 @@ function App() {
                     <p>
                       {
                         items.filter(
-                          (item) =>
-                            item.assignedTo === person
+                          (item) => item.assignedTo === person
                         ).length
                       }{" "}
-                      item(s)
+                      item(s) + equal tax and tip share
                     </p>
                   </div>
 
