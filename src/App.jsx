@@ -8,6 +8,7 @@ function App() {
   const [tip, setTip] = useState("");
   const [receiptPhoto, setReceiptPhoto] = useState(null);
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
   const [people, setPeople] = useState([""]);
   const [items, setItems] = useState([
     {
@@ -61,6 +62,44 @@ function App() {
 
     setReceiptPhoto(null);
     setReceiptPhotoUrl("");
+  }
+
+  function scanReceipt() {
+    if (!receiptPhotoUrl) {
+      alert("Take or upload a receipt photo first.");
+      return;
+    }
+
+    setIsScanning(true);
+
+    setTimeout(() => {
+      setReceiptName("Sample Restaurant");
+      setTax("3.24");
+
+      setItems([
+        {
+          name: "Cheeseburger",
+          price: "12.99",
+          assignedTo: "",
+        },
+        {
+          name: "French Fries",
+          price: "4.50",
+          assignedTo: "",
+        },
+        {
+          name: "Soft Drink",
+          price: "2.99",
+          assignedTo: "",
+        },
+      ]);
+
+      setIsScanning(false);
+
+      alert(
+        "Test scan complete. Review the detected information before continuing."
+      );
+    }, 1500);
   }
 
   function addPerson() {
@@ -268,6 +307,16 @@ function App() {
                     style={{ marginBottom: "20px" }}
                   >
                     Remove photo
+                  </button>
+
+                  <button
+                    type="button"
+                    className="continueButton"
+                    onClick={scanReceipt}
+                    disabled={isScanning}
+                    style={{ marginBottom: "20px" }}
+                  >
+                    {isScanning ? "Scanning receipt..." : "Scan receipt"}
                   </button>
                 </>
               )}
