@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createWorker } from "tesseract.js";
 import "./App.css";
 
 function App() {
@@ -6,10 +7,15 @@ function App() {
   const [receiptName, setReceiptName] = useState("");
   const [tax, setTax] = useState("");
   const [tip, setTip] = useState("");
+
   const [receiptPhoto, setReceiptPhoto] = useState(null);
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState("");
+
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+
   const [people, setPeople] = useState([""]);
+
   const [items, setItems] = useState([
     {
       name: "",
@@ -51,8 +57,10 @@ function App() {
       URL.revokeObjectURL(receiptPhotoUrl);
     }
 
+    const newPhotoUrl = URL.createObjectURL(file);
+
     setReceiptPhoto(file);
-    setReceiptPhotoUrl(URL.createObjectURL(file));
+    setReceiptPhotoUrl(newPhotoUrl);
   }
 
   function removeReceiptPhoto() {
@@ -62,44 +70,134 @@ function App() {
 
     setReceiptPhoto(null);
     setReceiptPhotoUrl("");
+    setScanProgress(0);
   }
 
-  function scanReceipt() {
-    if (!receiptPhotoUrl) {
+  async function scanReceipt() {
+    if (!receiptPhoto) {
       alert("Take or upload a receipt photo first.");
       return;
     }
 
     setIsScanning(true);
+    setScanProgress(0);
 
-    setTimeout(() => {
-      setReceiptName("Sample Restaurant");
-      setTax("3.24");
+    let worker;
 
-      setItems([
-        {
-          name: "Cheeseburger",
-          price: "12.99",
-          assignedTo: "",
+    try {
+      worker = await createWorker("eng", 1, {
+        logger: (message) => {
+          if (
+            message.status === "recognizing text" &&
+            typeof message.progress === "number"
+          ) {
+            setScanProgress(Math.round(message.progress * 100));
+          }
         },
-        {
-          name: "French Fries",
-          price: "4.50",
-          assignedTo: "",
-        },
-        {
-          name: "Soft Drink",
-          price: "2.99",
-          assignedTo: "",
-        },
-      ]);
+      });
 
-      setIsScanning(false);
+      const result = await worker.recognize(receiptPhoto);
+      const detectedText = result.data.text;
+
+      const lines = detectedText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const pricePattern = /\$?\s*(\d+\.\d{2})\s*$/;
+      const detectedItems = [];
+
+      for (const line of lines) {
+        const priceMatch = line.match(pricePattern);
+
+        if (!priceMatch) {
+          continue;
+        }
+
+        const price = priceMatch[1];
+
+        const itemName = line
+          .replace(pricePattern, "")
+          .replace(/[$€£]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        const loweredName = itemName.toLowerCase();
+
+        const shouldSkip =
+          loweredName.includes("subtotal") ||
+          loweredName.includes("sub total") ||
+          loweredName.includes("tax") ||
+          loweredName.includes("tip") ||
+          loweredName.includes("total") ||
+          loweredName.includes("balance") ||
+          loweredName.includes("cash") ||
+          loweredName.includes("change") ||
+          itemName.length < 2;
+
+        if (!shouldSkip) {
+          detectedItems.push({
+            name: itemName,
+            price,
+            assignedTo: "",
+          });
+        }
+      }
+
+      const taxLine = lines.find((line) =>
+        line.toLowerCase().includes("tax")
+      );
+
+      if (taxLine) {
+        const taxMatch = taxLine.match(pricePattern);
+
+        if (taxMatch) {
+          setTax(taxMatch[1]);
+        }
+      }
+
+      const possibleRestaurantName = lines.find((line) => {
+        const loweredLine = line.toLowerCase();
+
+        return (
+          !pricePattern.test(line) &&
+          !loweredLine.includes("receipt") &&
+          !loweredLine.includes("thank you") &&
+          !loweredLine.includes("welcome") &&
+          line.length >= 3 &&
+          line.length <= 40
+        );
+      });
+
+      if (possibleRestaurantName) {
+        setReceiptName(possibleRestaurantName);
+      }
+
+      if (detectedItems.length > 0) {
+        setItems(detectedItems);
+
+        alert(
+          `Scan complete. SplitSnap found ${detectedItems.length} possible item(s). Review everything before continuing.`
+        );
+      } else {
+        alert(
+          "Text was detected, but SplitSnap could not confidently identify the items and prices. Try a clearer photo or enter them manually."
+        );
+      }
+    } catch (error) {
+      console.error("Receipt scan failed:", error);
 
       alert(
-        "Test scan complete. Review the detected information before continuing."
+        "The receipt could not be scanned. Try a brighter, clearer photo."
       );
-    }, 1500);
+    } finally {
+      if (worker) {
+        await worker.terminate();
+      }
+
+      setIsScanning(false);
+      setScanProgress(0);
+    }
   }
 
   function addPerson() {
@@ -219,11 +317,13 @@ function App() {
 
   function startOver() {
     removeReceiptPhoto();
+
     setStep(1);
     setReceiptName("");
     setTax("");
     setTip("");
     setPeople([""]);
+
     setItems([
       {
         name: "",
@@ -304,6 +404,7 @@ function App() {
                     type="button"
                     className="smallButton"
                     onClick={removeReceiptPhoto}
+                    disabled={isScanning}
                     style={{ marginBottom: "20px" }}
                   >
                     Remove photo
@@ -316,7 +417,9 @@ function App() {
                     disabled={isScanning}
                     style={{ marginBottom: "20px" }}
                   >
-                    {isScanning ? "Scanning receipt..." : "Scan receipt"}
+                    {isScanning
+                      ? `Scanning receipt... ${scanProgress}%`
+                      : "Scan receipt"}
                   </button>
                 </>
               )}
